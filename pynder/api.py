@@ -32,16 +32,18 @@ class TinderAPI(object):
         self._session.headers.update({"X-Auth-Token": str(result['token'])})
         return result
 
-    def _request(self, method, url, data={}):
+    def _request(self, method, url, data=None, params=None):
         if not hasattr(self, '_token'):
             raise errors.InitializationError
         result = self._session.request(method, self._full_url(
-            url), json=data, proxies=self._proxies)
-        while result.status_code == 429:
-            blocker = threading.Event()
-            blocker.wait(0.01)
-            result = self._session.request(method, self._full_url(
-                url), data=data, proxies=self._proxies)
+            url), json=data, params=params, proxies=self._proxies, )
+        if result.status_code == 429:
+            raise errors.RateLimitError
+        # while result.status_code == 429:
+        #     blocker = threading.Event()
+        #     blocker.wait(0.01)
+        #     result = self._session.request(method, self._full_url(
+        #         url), data=data, params=params, proxies=self._proxies)
         if result.status_code < 200 or result.status_code >= 300:
             raise errors.RequestError(result.status_code)
         if result.status_code == 201 or result.status_code == 204:
@@ -51,8 +53,8 @@ class TinderAPI(object):
     def _get(self, url):
         return self._request("get", url)
 
-    def _post(self, url, data={}):
-        return self._request("post", url, data=data)
+    def _post(self, url, data=None, params=None):
+        return self._request("post", url, data=data, params=params)
 
     def _delete(self, url):
         return self._request("delete", url)
@@ -77,8 +79,8 @@ class TinderAPI(object):
 
         return self._request("delete", constants.CONTENT_BASE + "/media", data=data)
 
-    def recs(self, limit=10):
-        return self._post("/user/recs", data={"limit": limit})
+    def recs(self):
+        return self._post("/user/recs")
 
     def matches(self, since):
         return self.updates(since)['matches']

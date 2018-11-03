@@ -1,8 +1,11 @@
+import json
 from time import time
 from cached_property import cached_property
+from concurrent.futures import ThreadPoolExecutor
+
 
 import pynder.api as api
-from pynder.errors import InitializationError, RecsTimeout
+from pynder.errors import InitializationError, RecsTimeout, RateLimitError
 from pynder.models import Profile, User, RateLimited, Match, Friend
 
 
@@ -21,21 +24,38 @@ class Session(object):
     def profile(self):
         return Profile(self._api.profile(), self._api)
 
-    def nearby_users(self, limit=10):
-        while True:
-            response = self._api.recs(limit)
+    def nearby_users(self, limit=100):
 
-            if 'message' in response and response['message'] == 'recs timeout':
-                raise RecsTimeout
+        max_limit = 2900
+        if limit > max_limit:
+            raise ValueError(f'Maximum allowed user limit is {max_limit}')
 
-            users = response['results'] if 'results' in response else []
-            for user in users:
-                if not user["_id"].startswith("tinder_rate_limited_id_"):
-                    yield User(user, self)
-                else:
-                    yield RateLimited(user, self)
-            if not len(users):
+        user_list = []
+        while len(user_list) <= limit:
+            try:
+                response = self._api.recs()
+
+                if 'message' in response and response['message'] == 'recs timeout':
+                    raise RecsTimeout
+
+                users = response['results'] if 'results' in response else []
+                user_list.extend(users)
+                print(len(user_list))
+            except RateLimitError:
+                print('Rate limited by the API, cannot retrieve any more users at this time')
                 break
+
+        users_file = '../users_nearby.json'
+        with open(users_file, 'w') as outfile:
+            json.dump(user_list, outfile)
+        # break
+            # for user in users:
+            #     if not user["_id"].startswith("tinder_rate_limited_id_"):
+            #         yield User(user, self)
+            #     else:
+            #         yield RateLimited(user, self)
+            # if not len(users):
+            #     break
 
     def update_profile(self, profile):
         return self._api.update_profile(profile)

@@ -16,3 +16,7 @@ class RecsError(PynderError):
 
 class RecsTimeout(RecsError):
     pass
+
+
+class RateLimitError(PynderError):
+    pass

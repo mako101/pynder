@@ -22,6 +22,8 @@ class User(Model):
         self.birth_date = dateutil.parser.parse(self.birth_date)
         self.schools = {}
         self.jobs = []
+        self.bio = data['bio']
+        self.name = data['name']
         try:
             self.schools.update({school["id"]: school["name"] for school in data['schools'] if 'id' in school and 'name' in school})
             self.jobs.extend(["%s @ %s" % (job["title"]["name"], job["company"]["name"]) for job in data['jobs'] if 'title' in job and 'company' in job])
@@ -89,11 +91,12 @@ class User(Model):
     def share_link(self):
         return self._session._api.share(self.id)['link']
 
-    def __unicode__(self):
-        return u"{n} ({a})".format(n=self.name, a=self.age)
+    # def __unicode__(self):
+    #     return u"{n} ({a})".format(n=self.name, a=self.age)
 
     def __str__(self):
-        return six.text_type(self).encode('utf-8')
+        return self.name
+        # return six.text_type(self).encode('utf-8')
 
     def __repr__(self):
         return repr(self.name)
